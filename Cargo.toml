@@ -1,12 +1,11 @@
 [package]
-name = "stm32h7-test"
+name = "joystick-usbhid-stm32h7"
 version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-# Change stm32h743bi to your chip name, if necessary.
 embassy-stm32 = { version = "0.1.0", git = "https://github.com/embassy-rs/embassy", features = ["nightly", "defmt", "stm32h7a3zi", "time-driver-any", "exti", "memory-x", "unstable-pac", "unstable-traits"] }
 embassy-executor = { version = "0.3.0", git = "https://github.com/embassy-rs/embassy", features = ["nightly", "arch-cortex-m", "executor-thread", "defmt", "integrated-timers"] }
 embassy-time = { version = "0.1.2", git = "https://github.com/embassy-rs/embassy", features = ["defmt", "defmt-timestamp-uptime", "unstable-traits", "tick-hz-32_768"] }

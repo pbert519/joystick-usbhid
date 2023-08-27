@@ -55,7 +55,7 @@ pub fn setup_usb<D: embassy_usb::driver::Driver<'static>>(
 
     let usb = builder.build();
 
-    return (writer, usb);
+    (writer, usb)
 }
 
 #[embassy_executor::task]

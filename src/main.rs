@@ -27,26 +27,30 @@ async fn main(spawner: embassy_executor::Spawner) {
 
     info!("Started Application!");
 
-    let mut y: i8 = 50;
-    let mut btnId: u8 = 0;
-
     let mut joystick_buttons = JoystickButtonsMatrix::new(board.joystick_button_matrix);
 
+    let mut analog_inputs = board.analog_inputs;
+
     loop {
-        Timer::after(Duration::from_millis(500)).await;
+        Timer::after(Duration::from_millis(100)).await;
 
         let btn = joystick_buttons.check().await;
-        defmt::warn!("{:?}", btn);
+        defmt::info!("{:?}", btn);
+        defmt::info!("x: {} y: {}", analog_inputs.x(), analog_inputs.y());
 
+        let button_bits = (btn.fire as u8)
+            | (btn.lock as u8) << 1
+            | (btn.launch as u8) << 2
+            | (btn.a as u8) << 3
+            | (btn.b as u8) << 4
+            | (btn.c as u8) << 5;
 
-        y = -y;
-        btnId = (btnId +1)%8;
         let report = JoystickReport {
-            throttle: 200,
-            rudder: y,
-            x: 0,
-            y,
-            buttons: 1 << btnId,
+            throttle: 0,
+            rudder: 0,
+            x: (((analog_inputs.x() as i32) - 2048) / 16) as i8,
+            y: (((analog_inputs.y() as i32) - 2048) / 16) as i8,
+            buttons: button_bits,
         };
         match writer.write_serialize(&report).await {
             Ok(()) => {}

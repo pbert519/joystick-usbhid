@@ -18,8 +18,8 @@ use usbd_hid::descriptor::SerializedDescriptor;
                 #[item_settings data,variable,absolute] y=input;
             };
         };
-        (usage_page = BUTTON, usage_min = BUTTON_1, usage_max = 0x10 /*16 buttons */) = {
-            #[item_settings data,variable,absolute] buttons=input;
+        (usage_page = BUTTON, usage_min = BUTTON_1, usage_max = 0x06 /*6 buttons */) = {
+            #[packed_bits 6] #[item_settings data,variable,absolute] buttons=input;
         };
     }
 )]

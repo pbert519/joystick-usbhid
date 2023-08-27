@@ -2,8 +2,9 @@ use embassy_time::{Duration, Timer};
 
 use crate::board;
 
-#[derive(Debug,defmt::Format)]
+#[derive(Debug, defmt::Format, Default)]
 pub enum DPadDirection {
+    #[default]
     None,
     Up,
     RightUp,
@@ -13,11 +14,6 @@ pub enum DPadDirection {
     LeftDown,
     Left,
     LeftUp,
-}
-impl Default for DPadDirection {
-    fn default() -> Self {
-        DPadDirection::None
-    }
 }
 
 impl DPadDirection {
@@ -44,16 +40,16 @@ impl DPadDirection {
     }
 }
 
-#[derive(Default,Debug,defmt::Format)]
+#[derive(Default, Debug, defmt::Format)]
 pub struct JoystickButtons {
-    lock: bool,
-    fire: bool,
-    launch: bool,
-    a: bool,
-    b: bool,
-    c: bool,
-    dpad1: DPadDirection,
-    dpad2: DPadDirection,
+    pub lock: bool,
+    pub fire: bool,
+    pub launch: bool,
+    pub a: bool,
+    pub b: bool,
+    pub c: bool,
+    pub dpad1: DPadDirection,
+    pub dpad2: DPadDirection,
 }
 
 pub struct JoystickButtonsMatrix {
@@ -103,13 +99,14 @@ impl JoystickButtonsMatrix {
             dpad1_down.into(),
             dpad1_left.into(),
         );
-        buttons.dpad1 = DPadDirection::from_pins(
+        buttons.dpad2 = DPadDirection::from_pins(
             dpad2_up.into(),
             dpad2_right.into(),
             dpad2_down.into(),
             dpad2_left.into(),
         );
+        self.pins.dpad_left_launch_select.set_low();
 
-        return buttons;
+        buttons
     }
 }
