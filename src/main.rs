@@ -4,6 +4,7 @@
 
 mod board;
 mod hid;
+mod joystick_button_matrix;
 mod usb;
 
 use defmt::*;
@@ -12,7 +13,7 @@ use embassy_time::{Duration, Timer};
 use panic_probe as _;
 use usbd_hid::descriptor::SerializedDescriptor;
 
-use crate::hid::JoystickReport;
+use crate::{hid::JoystickReport, joystick_button_matrix::JoystickButtonsMatrix};
 
 #[embassy_executor::main]
 async fn main(spawner: embassy_executor::Spawner) {
@@ -27,19 +28,25 @@ async fn main(spawner: embassy_executor::Spawner) {
     info!("Started Application!");
 
     let mut y: i8 = 50;
-    let mut btn: u8 = 0;
+    let mut btnId: u8 = 0;
+
+    let mut joystick_buttons = JoystickButtonsMatrix::new(board.joystick_button_matrix);
 
     loop {
         Timer::after(Duration::from_millis(500)).await;
 
+        let btn = joystick_buttons.check().await;
+        defmt::warn!("{:?}", btn);
+
+
         y = -y;
-        btn = (btn +1)%8;
+        btnId = (btnId +1)%8;
         let report = JoystickReport {
             throttle: 200,
             rudder: y,
             x: 0,
             y,
-            buttons: 1 << btn,
+            buttons: 1 << btnId,
         };
         match writer.write_serialize(&report).await {
             Ok(()) => {}

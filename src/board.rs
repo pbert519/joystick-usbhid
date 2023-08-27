@@ -21,6 +21,19 @@ pub struct Board {
     pub stlink_usart: usart::Uart<'static, peripherals::USART3>,
     /// onboard full speed usb interface
     pub usb_driver: usb_otg::Driver<'static, peripherals::USB_OTG_HS>,
+    /// pins used for the button matrix on primary joystick
+    pub joystick_button_matrix: ButtonMatrixPins,
+}
+
+pub struct ButtonMatrixPins {
+    pub dpad1_input: gpio::Input<'static, gpio::AnyPin>,
+    pub dpad2_input: gpio::Input<'static, gpio::AnyPin>,
+    pub buttons_input: gpio::Input<'static, gpio::AnyPin>,
+    pub fire_lock_input: gpio::Input<'static, gpio::AnyPin>,
+    pub lock_dpad_right_btn_a_select: gpio::Output<'static, gpio::AnyPin>,
+    pub fire_dpad_up_btn_c_select: gpio::Output<'static, gpio::AnyPin>,
+    pub dpad_left_launch_select: gpio::Output<'static, gpio::AnyPin>,
+    pub dpad_down_btn_b_select: gpio::Output<'static, gpio::AnyPin>,
 }
 
 impl Board {
@@ -32,6 +45,26 @@ impl Board {
         let led_yellow = gpio::Output::new(p.PE1, gpio::Level::High, gpio::Speed::Low).degrade();
         let led_green = gpio::Output::new(p.PB0, gpio::Level::High, gpio::Speed::Low).degrade();
         let btn_user = gpio::Input::new(p.PC13, gpio::Pull::None).degrade();
+
+        // TODO Select Pins
+        let joystick_button_matrix = ButtonMatrixPins {
+            dpad1_input: gpio::Input::new(p.PA0, gpio::Pull::Down).degrade(),
+            dpad2_input: gpio::Input::new(p.PA1, gpio::Pull::Down).degrade(),
+            buttons_input: gpio::Input::new(p.PA2, gpio::Pull::Down).degrade(),
+            fire_lock_input: gpio::Input::new(p.PA3, gpio::Pull::Down).degrade(),
+            lock_dpad_right_btn_a_select: gpio::Output::new(
+                p.PA4,
+                gpio::Level::Low,
+                gpio::Speed::Low,
+            )
+            .degrade(),
+            fire_dpad_up_btn_c_select: gpio::Output::new(p.PA5, gpio::Level::Low, gpio::Speed::Low)
+                .degrade(),
+            dpad_left_launch_select: gpio::Output::new(p.PA6, gpio::Level::Low, gpio::Speed::Low)
+                .degrade(),
+            dpad_down_btn_b_select: gpio::Output::new(p.PA7, gpio::Level::Low, gpio::Speed::Low)
+                .degrade(),
+        };
 
         let stlink_usart = usart::Uart::new(
             p.USART3,
@@ -64,6 +97,7 @@ impl Board {
             btn_user,
             stlink_usart,
             usb_driver,
+            joystick_button_matrix,
         }
     }
 }
