@@ -1,44 +1,7 @@
 use embassy_time::{Duration, Timer};
 
 use crate::board;
-
-#[derive(Debug, defmt::Format, Default)]
-pub enum DPadDirection {
-    #[default]
-    None,
-    Up,
-    RightUp,
-    Right,
-    RightDown,
-    Down,
-    LeftDown,
-    Left,
-    LeftUp,
-}
-
-impl DPadDirection {
-    pub fn from_pins(up: bool, right: bool, down: bool, left: bool) -> DPadDirection {
-        if up && !right && !down && !left {
-            DPadDirection::Up
-        } else if !up && right && !down && !left {
-            DPadDirection::Right
-        } else if !up && !right && down && !left {
-            DPadDirection::Down
-        } else if !up && !right && !down && left {
-            DPadDirection::Left
-        } else if up && right && !down && !left {
-            DPadDirection::RightUp
-        } else if !up && right && down && !left {
-            DPadDirection::RightDown
-        } else if up && !right && !down && left {
-            DPadDirection::LeftUp
-        } else if !up && !right && down && left {
-            DPadDirection::LeftDown
-        } else {
-            DPadDirection::None
-        }
-    }
-}
+use crate::dpad::*;
 
 #[derive(Default, Debug, defmt::Format)]
 pub struct JoystickButtons {
@@ -52,12 +15,23 @@ pub struct JoystickButtons {
     pub dpad2: DPadDirection,
 }
 
+impl JoystickButtons {
+    pub fn as_bitfield(&self) -> u8 {
+        (self.fire as u8)
+            | (self.lock as u8) << 1
+            | (self.launch as u8) << 2
+            | (self.a as u8) << 3
+            | (self.b as u8) << 4
+            | (self.c as u8) << 5
+    }
+}
+
 pub struct JoystickButtonsMatrix {
-    pins: board::ButtonMatrixPins,
+    pins: board::JoystickButtonMatrixPins,
 }
 
 impl JoystickButtonsMatrix {
-    pub fn new(pins: board::ButtonMatrixPins) -> Self {
+    pub fn new(pins: board::JoystickButtonMatrixPins) -> Self {
         Self { pins }
     }
 

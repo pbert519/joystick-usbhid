@@ -23,12 +23,14 @@ pub struct Board {
     /// onboard full speed usb interface
     pub usb_driver: usb_otg::Driver<'static, peripherals::USB_OTG_HS>,
     /// pins used for the button matrix on primary joystick
-    pub joystick_button_matrix: ButtonMatrixPins,
+    pub joystick_button_matrix: JoystickButtonMatrixPins,
+    /// pins used for the button matrix on throttle
+    pub throttle_button_matrix: ThrottleButtonMatrixPins,
     /// analog inputs
     pub analog_inputs: AnalogInput,
 }
 
-pub struct ButtonMatrixPins {
+pub struct JoystickButtonMatrixPins {
     pub dpad1_input: gpio::Input<'static, gpio::AnyPin>,
     pub dpad2_input: gpio::Input<'static, gpio::AnyPin>,
     pub buttons_input: gpio::Input<'static, gpio::AnyPin>,
@@ -39,14 +41,26 @@ pub struct ButtonMatrixPins {
     pub dpad_down_btn_b_select: gpio::Output<'static, gpio::AnyPin>,
 }
 
+pub struct ThrottleButtonMatrixPins {
+    pub dpad1_input: gpio::Input<'static, gpio::AnyPin>,
+    pub dpad2_input: gpio::Input<'static, gpio::AnyPin>,
+    pub mode_aux_input: gpio::Input<'static, gpio::AnyPin>,
+    pub input: gpio::Input<'static, gpio::AnyPin>,
+    pub dpad_right_select: gpio::Output<'static, gpio::AnyPin>,
+    pub dpad_up_select: gpio::Output<'static, gpio::AnyPin>,
+    pub dpad_left_select_select: gpio::Output<'static, gpio::AnyPin>,
+    pub dpad_down_select: gpio::Output<'static, gpio::AnyPin>,
+}
+
 pub struct AnalogInput {
     adc: adc::Adc<'static, peripherals::ADC1>,
-    x: peripherals::PA3,         // A0 on board
-    y: peripherals::PC0,         // A1 on board
-    _rudder: peripherals::PC3,   // A2 on board
-    _throttle: peripherals::PB1, // A3 on board
-    _poti1: peripherals::PC2,    // A4 on board
-    _poti2: peripherals::PF11,   // A5 on board
+    adc2: adc::Adc<'static, peripherals::ADC2>,
+    x: peripherals::PA3,          // A0 on board
+    y: peripherals::PC0,          // A1 on board
+    rudder: peripherals::PF11,    // A2 on board
+    throttle: peripherals::PC2_C, // A3 on board
+    poti1: peripherals::PB1,      // A4 on board
+    poti2: peripherals::PC3_C,    // A5 on board
 }
 impl AnalogInput {
     pub fn x(&mut self) -> u16 {
@@ -55,12 +69,24 @@ impl AnalogInput {
     pub fn y(&mut self) -> u16 {
         self.adc.read(&mut self.y)
     }
+    pub fn rudder(&mut self) -> u16 {
+        self.adc.read(&mut self.rudder)
+    }
+    pub fn throttle(&mut self) -> u16 {
+        self.adc2.read(&mut self.throttle)
+    }
+    pub fn poti1(&mut self) -> u16 {
+        self.adc.read(&mut self.poti1)
+    }
+    pub fn poti2(&mut self) -> u16 {
+        self.adc2.read(&mut self.poti2)
+    }
 }
 
 impl Board {
     pub fn init() -> Self {
         let mut config = embassy_stm32::Config::default();
-        config.rcc.adc_clock_source = rcc::AdcClockSource::PerCk;
+        config.rcc.adc_clock_source = rcc::AdcClockSource::PER;
         let p = embassy_stm32::init(config);
 
         let led_red = gpio::Output::new(p.PB14, gpio::Level::High, gpio::Speed::Low).degrade();
@@ -68,7 +94,7 @@ impl Board {
         let led_green = gpio::Output::new(p.PB0, gpio::Level::High, gpio::Speed::Low).degrade();
         let btn_user = gpio::Input::new(p.PC13, gpio::Pull::None).degrade();
 
-        let joystick_button_matrix = ButtonMatrixPins {
+        let joystick_button_matrix = JoystickButtonMatrixPins {
             dpad1_input: gpio::Input::new(p.PE2, gpio::Pull::Down).degrade(), // black
             dpad2_input: gpio::Input::new(p.PF7, gpio::Pull::Down).degrade(), // brown
             buttons_input: gpio::Input::new(p.PD10, gpio::Pull::Down).degrade(), // lila
@@ -87,6 +113,20 @@ impl Board {
                 .degrade(), // blue
         };
 
+        let throttle_button_matrix = ThrottleButtonMatrixPins {
+            dpad1_input: gpio::Input::new(p.PC12, gpio::Pull::Down).degrade(), // Light green
+            dpad2_input: gpio::Input::new(p.PG8, gpio::Pull::Down).degrade(),  // green
+            mode_aux_input: gpio::Input::new(p.PG10, gpio::Pull::Down).degrade(), // BLK/WT
+            input: gpio::Input::new(p.PD2, gpio::Pull::Down).degrade(),        // GREY
+            dpad_right_select: gpio::Output::new(p.PC8, gpio::Level::Low, gpio::Speed::Low)
+                .degrade(), // BLUE
+            dpad_up_select: gpio::Output::new(p.PC9, gpio::Level::Low, gpio::Speed::Low).degrade(), // BLK
+            dpad_left_select_select: gpio::Output::new(p.PC10, gpio::Level::Low, gpio::Speed::Low)
+                .degrade(), // BRN/WT
+            dpad_down_select: gpio::Output::new(p.PC11, gpio::Level::Low, gpio::Speed::Low)
+                .degrade(), // PING
+        };
+
         let stlink_usart = usart::Uart::new(
             p.USART3,
             p.PD9,
@@ -95,7 +135,12 @@ impl Board {
             dma::NoDma,
             dma::NoDma,
             usart::Config::default(),
-        );
+        )
+        .unwrap();
+
+        let mut adc2 = adc::Adc::new(p.ADC2, &mut Delay);
+        adc2.set_sample_time(adc::SampleTime::Cycles32_5);
+        adc2.set_resolution(adc::Resolution::TwelveBit);
 
         let mut adc = adc::Adc::new(p.ADC1, &mut Delay);
         adc.set_sample_time(adc::SampleTime::Cycles32_5);
@@ -103,12 +148,13 @@ impl Board {
 
         let analog_inputs = AnalogInput {
             adc,
+            adc2,
             x: p.PA3,
-            y: p.PC0,         // A1 on board
-            _rudder: p.PC3,   // A2 on board
-            _throttle: p.PB1, // A3 on board
-            _poti1: p.PC2,    // A4 on board
-            _poti2: p.PF11,   // A5 on board
+            y: p.PC0,          // A1 on board
+            rudder: p.PF11,    // A2 on board
+            throttle: p.PC2_C, // A3 on board
+            poti1: p.PB1,      // A4 on board
+            poti2: p.PC3_C,    // A5 on board
         };
 
         // create usb driver
@@ -133,6 +179,7 @@ impl Board {
             stlink_usart,
             usb_driver,
             joystick_button_matrix,
+            throttle_button_matrix,
             analog_inputs,
         }
     }
