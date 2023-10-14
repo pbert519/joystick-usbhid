@@ -86,6 +86,7 @@ impl AnalogInput {
 impl Board {
     pub fn init() -> Self {
         let mut config = embassy_stm32::Config::default();
+        config.enable_debug_during_sleep = true;
         config.rcc.adc_clock_source = rcc::AdcClockSource::PER;
         let p = embassy_stm32::init(config);
 
