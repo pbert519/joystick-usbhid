@@ -7,7 +7,7 @@ struct UsbStaticData {
     device_descriptor: [u8; 256],
     config_descriptor: [u8; 256],
     bos_descriptor: [u8; 256],
-    control_buf: [u8; 64],
+    control_buf: [u8; 256],
     state: hid::State<'static>,
     request_handler: UsbRequestHandler,
 }
@@ -16,7 +16,7 @@ static USB_STATIC_DATA: StaticCell<UsbStaticData> = StaticCell::new();
 pub fn setup_usb<D: embassy_usb::driver::Driver<'static>>(
     usb_driver: D,
 ) -> (
-    hid::HidWriter<'static, D, 10>,
+    hid::HidWriter<'static, D, 20>,
     embassy_usb::UsbDevice<'static, D>,
 ) {
     let mut usb_config = embassy_usb::Config::new(0xc0de, 0xcafe);
@@ -28,7 +28,7 @@ pub fn setup_usb<D: embassy_usb::driver::Driver<'static>>(
         device_descriptor: [0; 256],
         config_descriptor: [0; 256],
         bos_descriptor: [0; 256],
-        control_buf: [0; 64],
+        control_buf: [0; 256],
         state: hid::State::new(),
         request_handler: UsbRequestHandler {},
     });
@@ -39,10 +39,11 @@ pub fn setup_usb<D: embassy_usb::driver::Driver<'static>>(
         &mut usb_static_data.device_descriptor,
         &mut usb_static_data.config_descriptor,
         &mut usb_static_data.bos_descriptor,
+        &mut [],
         &mut usb_static_data.control_buf,
     );
 
-    let writer: hid::HidWriter<_, 10> = hid::HidWriter::new(
+    let writer: hid::HidWriter<_, 20> = hid::HidWriter::new(
         &mut builder,
         &mut usb_static_data.state,
         hid::Config {
